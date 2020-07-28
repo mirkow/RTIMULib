@@ -1,0 +1,18 @@
+# - Config file for the RTIMULib package
+# It defines the following variables
+#  RTIMULib_INCLUDE_DIRS - include directories for RTIMULib
+#  RTIMULib_LIBRARIES    - libraries to link against
+#  RTIMULib_EXECUTABLE   - the bar executable
+
+# Compute paths
+get_filename_component(RTIMULib_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(RTIMULib_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+if(NOT TARGET RTIMULib AND NOT RTIMULib_BINARY_DIR)
+  include("${RTIMULib_CMAKE_DIR}/RTIMULibTargets.cmake")
+endif()
+
+# These are IMPORTED targets created by RTIMULibTargets.cmake
+set(RTIMULib_LIBRARIES RTIMULib)
+

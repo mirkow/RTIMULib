@@ -35,11 +35,10 @@ ENDIF(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 ########################################################################
 # Project setup
 ########################################################################
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.9)
-PROJECT(RTIMULib CXX)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+PROJECT(RTIMULib VERSION 1.0.0 LANGUAGES CXX)
 ENABLE_TESTING()
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/../RTIMULibVersion.txt)
 
@@ -91,9 +90,94 @@ ENDIF(WIN32 AND (NOT QT5))
 
 IF(UNIX)
     ADD_LIBRARY(RTIMULib SHARED ${LIBRTIMU_SRCS})
+endif()
+
+TARGET_INCLUDE_DIRECTORIES(RTIMULib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:include/>)
+
+
+if(UNIX)
     SET_PROPERTY(TARGET RTIMULib PROPERTY VERSION ${RTIMULIB_VERSION})
     SET_PROPERTY(TARGET RTIMULib PROPERTY SOVERSION ${RTIMULIB_VERSION_MAJOR})
     INSTALL(TARGETS RTIMULib DESTINATION lib)
-    INSTALL(DIRECTORY . DESTINATION include FILES_MATCHING PATTERN "*.h")
+    include(CMakePackageConfigHelpers)
+    # Offer the user the choice of overriding the installation directories
+    set(INSTALL_LIB_DIR
+        lib
+        CACHE PATH "Installation directory for libraries")
+    set(INSTALL_BIN_DIR
+        bin
+        CACHE PATH "Installation directory for executables")
+    set(INSTALL_INCLUDE_DIR
+        include/Navio
+        CACHE PATH "Installation directory for header files")
+    if(WIN32 AND NOT CYGWIN)
+    set(DEF_INSTALL_CMAKE_DIR CMake)
+    else()
+    set(DEF_INSTALL_CMAKE_DIR share/RTIMULib/cmake)
+    endif()
+    set(INSTALL_CMAKE_DIR
+        ${DEF_INSTALL_CMAKE_DIR}
+        CACHE PATH "Installation directory for CMake files")
+
+    # Create the RTIMULibConfig.cmake and RTIMULibConfigVersion files
+    if(NOT IS_ABSOLUTE "${INSTALL_INCLUDE_DIR}")
+    set(ABS_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_INCLUDE_DIR}")
+    endif()
+    if(NOT IS_ABSOLUTE "${INSTALL_CMAKE_DIR}")
+    set(ABS_INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}")
+    endif()
+    file(RELATIVE_PATH REL_INCLUDE_DIR "${ABS_INSTALL_CMAKE_DIR}"
+        "${ABS_INSTALL_INCLUDE_DIR}")
+    # ... for the build tree
+    set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+    configure_file(cmake/RTIMULibConfig.cmake.in
+                "${PROJECT_BINARY_DIR}/RTIMULibConfig.cmake" @ONLY)
+    # ... for the install tree
+    set(CONF_INCLUDE_DIRS "\${RTIMULib_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+    configure_file(
+    cmake/RTIMULibConfig.cmake.in
+    "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTIMULibConfig.cmake"
+    @ONLY)
+    # ... version file for both
+    write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/RTIMULibConfigVersion.cmake
+                                    VERSION ${PROJECT_VERSION}
+                                    COMPATIBILITY SameMajorVersion )
+
+    install(
+        TARGETS RTIMULib
+        EXPORT RTIMULibTargets
+        LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT shlib
+        PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/"
+                    COMPONENT dev)            
+                    
+    # Add all targets to the build-tree export set
+    export(TARGETS RTIMULib
+        FILE "${PROJECT_BINARY_DIR}/RTIMULibTargets.cmake")
+                        
+    install(
+        FILES
+            "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/RTIMULibConfig.cmake"
+            "${PROJECT_BINARY_DIR}/RTIMULibConfigVersion.cmake"
+        DESTINATION "${INSTALL_CMAKE_DIR}"
+        COMPONENT dev)
+        install(
+            DIRECTORY Common RTIMULib
+            DESTINATION ${INSTALL_INCLUDE_DIR}
+            FILES_MATCHING
+            PATTERN "*.h")    
+
+    # Install the export set for use with the install-tree
+    install(
+    EXPORT RTIMULibTargets
+    DESTINATION "${INSTALL_CMAKE_DIR}"
+    COMPONENT dev)       
+
+
 ENDIF(UNIX)
+
+
+
+export(PACKAGE RTIMULib)
+
+
 
